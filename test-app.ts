@@ -1,105 +1,150 @@
-var currencies: string[] = [
-    "USD",
-    "EUR",
-    "JPY",
-    "GBP",
-    "AUD",
-    "CAD",
-    "CHF",
-    "CNH",
-    "SEK",
-    "NZD",
-  ],
-  curMap = currencies.reduce(
-    (acc, currency) => [
-      ...acc,
-      ...currencies
-        .filter((a) => a != currency)
-        .map((b) =>
-          currencies.indexOf(b) < currencies.indexOf(currency)
-            ? b + currency
-            : currency + b
-        ),
-    ],
-    []
-  ),
-  currencyMap = {},
-  mapE = {};
+const trackExchangeRate = new (function () {
+  /**
+  * @param {object} currHashMap: 2D object that contains currency pairs exchange rate
+  * @param {object} currExchangeChainsList: 4D object that contains possible currencies exchange chains(ex.: USD -> AUD; USD -> EUR -> AUD)
+  */
+  var currencyHashMap = {},
+    currencyExchangeChainsList = {};
 
-// console.log(curMap)
+  /**
+   * Generate exchange chains for provided currency pair
+   * @param {string} firstCurrency: Currency to exchange from
+   * @param {string} secondCurrency: Currency to exchange to
+   */
+  function generateExchangeChains(firstCurrency: string, secondCurrency: string) {
+    /**  Calculate hashes */
+    const [f, l] = [firstCurrency + secondCurrency, secondCurrency + firstCurrency];
 
-function setExchangeRate(
-  firstCurrency: string,
-  secondCurrency: string,
-  exchangeRate: number
-): void {
-  let [f, l] = [firstCurrency + secondCurrency, secondCurrency + firstCurrency];
+    /** If chains list doesn't have `secondCurrency` currency as a key, add it */
+    if (!currencyExchangeChainsList[secondCurrency]) currencyExchangeChainsList[secondCurrency] = [];
+    /** Add link to the hash of newly added currency pair in `currHashMap` */
+    currencyExchangeChainsList[secondCurrency].push([currencyHashMap[f]]);
 
-  if (!currencyMap[f]) {
-    currencyMap[f] = { _: exchangeRate };
-
-    if (!mapE[secondCurrency]) mapE[secondCurrency] = [];
-    mapE[secondCurrency].push([currencyMap[f]]);
-
-    for (let key in mapE[firstCurrency]) {
+    /** 
+     * Check if any chains end on `firstCurrency` exist,
+     * if so, copy that chain list to chain list for `secondCurrency`
+     * 
+     * Ex.
+     * Call setExchangeRate(EUR, USD, exRate):
+     * {
+     *  USD: [[ #EURUSD ]]
+     * }
+     * Call setExchangeRate(USD, AUD, exRate):
+     * {
+     *  USD: [[ #EURUSD ]]
+     *  AUD: [[ #USDAUD ], [ #EURUSD, #USDAUD ]], 
+     * }
+     */
+    for (let key in currencyExchangeChainsList[firstCurrency]) {
       const temp = [];
-      for (let y in mapE[firstCurrency][key])
-        temp[y] = mapE[firstCurrency][key][y];
-      temp.push(currencyMap[f]);
-      mapE[secondCurrency].push(temp);
+      for (let y in currencyExchangeChainsList[firstCurrency][key])
+        temp[y] = currencyExchangeChainsList[firstCurrency][key][y];
+      temp.push(currencyHashMap[f]);
+      currencyExchangeChainsList[secondCurrency].push(temp);
     }
-  } else currencyMap[f]._ = exchangeRate;
+  }
 
-  if (!currencyMap[l]) currencyMap[l] = { _: 1 / exchangeRate };
-  else currencyMap[l]._ = 1 / exchangeRate;
-}
+  /**
+   * @param {string} firstCurrency: Currency to exchange from
+   * @param {string} secondCurrency: Currency to exchange to
+   * @param {number} exchangeRate: Exchange rate from `firstCurrency` to `secondCurrency`
+   */
+  this.setExchangeRate = function (
+    firstCurrency: string,
+    secondCurrency: string,
+    exchangeRate: number
+  ): void {
+    /**  Calculate hashes */
+    const [f, l] = [firstCurrency + secondCurrency, secondCurrency + firstCurrency];
 
-function getExchangeRate(
-  firstCurrency: string,
-  secondCurrency: string
-): number {
-  let f = firstCurrency + secondCurrency,
-    _ = 0;
+    /** If hash not exist add it to `currHashMap` and calculate chains */
+    if (!currencyHashMap[f]) {
+      currencyHashMap[f] = { _: exchangeRate };
+      generateExchangeChains(firstCurrency, secondCurrency);
+    }
+    /** If hash exist update it value */
+    else currencyHashMap[f]._ = exchangeRate;
 
-  if (currencyMap[f]) _ = currencyMap[f]._;
-  else if (mapE[secondCurrency]) {
-    for (let k in currencyMap) {
-      if (k.indexOf(firstCurrency) == 0) {
-        for (let r in mapE[secondCurrency]) {
-          if (mapE[secondCurrency][r][0] == currencyMap[k]) {
-            _ = 1;
-            for (let o in mapE[secondCurrency][r])
-              _ *= mapE[secondCurrency][r][o]._;
-            break;
+    /** 
+     * Add|Update the reversed hash:
+     *  
+     * Ex.
+     * Call setExchangeRate(EUR, USD, 1.25):
+     * original hash: EURUSD: 1.25
+     * reverted hash: USDEUR: 0.8
+     */
+    if (!currencyHashMap[l]) {
+      currencyHashMap[l] = { _: 1 / exchangeRate };
+      generateExchangeChains(secondCurrency, firstCurrency);// reverted chaining NOT WORK
+    }
+    else currencyHashMap[l]._ = 1 / exchangeRate;
+  }
+
+
+  /**
+   * Find and return  exchange currency rate
+   * @param {string} firstCurrency: Currency to exchange from
+   * @param {string} secondCurrency: Currency to exchange to
+   * @returns {number)} 0 if exchange chain not exist, else return calculated exchange rate of the shortest exchange chain available
+   */
+  this.getExchangeRate = function (
+    firstCurrency: string,
+    secondCurrency: string
+  ): number {
+    const f = firstCurrency + secondCurrency;
+    let result = 0;
+
+    /** First check if pair can be considered as hash, and return */
+    if (currencyHashMap[f]) result = currencyHashMap[f]._;
+    /** Looking for the exchange chain to meet requirements */
+    else if (currencyExchangeChainsList[secondCurrency]) {
+      let chain;
+      for (let k in currencyHashMap) {
+        if (k.indexOf(firstCurrency) == 0) {
+          for (let r in currencyExchangeChainsList[secondCurrency]) {
+            if (currencyExchangeChainsList[secondCurrency][r][0] == currencyHashMap[k]) {
+              // Overwrite founded chain if shorter chain found 
+              if (!chain || chain.length > currencyExchangeChainsList[secondCurrency][r].length) {
+                chain = currencyExchangeChainsList[secondCurrency][r]
+              }
+            }
           }
         }
       }
+
+      // If chain has been found calculate it exchange rate value
+      if (chain) {
+        result = 1;
+        for (let o in chain) result *= chain[o]._;
+      }
     }
+    return result;
   }
-  return _;
-}
 
-let a = 0,
-  b = 5;
-for (let i = 0; i < b; i++) {
-  currencyMap = {};
-  mapE = {};
-  let d1 = new Date();
-  // console.time();
-  for (let i = 0; i < 100000; i++) {
-    setExchangeRate("EUR", "USD", 1.25);
-    setExchangeRate("USD", "AUD", 0.8);
-    setExchangeRate("AUD", "SEK", 1);
-    setExchangeRate("AUD", "NZD", 1.5);
-    setExchangeRate("NZD", "SEK", 1);
+  this.getCurrencyHashMap = function () {
+    return currencyHashMap;
   }
-  // console.timeEnd();
-  a += new Date().getTime() - d1.getTime();
-}
-console.log(`${a / b}ms`);
-setExchangeRate("USD", "AUD", 0.9);
-setExchangeRate("AUD", "SEK", 2.25);
 
-console.log(getExchangeRate("EUR", "SEK"))
+  this.getCurrencyExchangeChainsList = function () {
+    return currencyExchangeChainsList;
+  }
 
-console.log("\n======================\n");
+  this.clearData = function () {
+    currencyHashMap = {};
+    currencyExchangeChainsList = {};
+  }
+});
+
+
+trackExchangeRate.setExchangeRate("EUR", "USD", 1.25);
+trackExchangeRate.setExchangeRate("USD", "AUD", 2);
+// trackExchangeRate.setExchangeRate("AUD", "SEK", 1);
+// trackExchangeRate.setExchangeRate("AUD", "NZD", 1.5);
+// trackExchangeRate.setExchangeRate("NZD", "SEK", 1);
+// trackExchangeRate.setExchangeRate("USD", "SEK", 1.5);
+
+console.log(JSON.stringify(trackExchangeRate.getCurrencyExchangeChainsList(), null, 2))
+console.log(trackExchangeRate.getExchangeRate("EUR", "AUD"))
+console.log(trackExchangeRate.getExchangeRate("AUD", "EUR"))
+
+console.log("\n==========================\n")
