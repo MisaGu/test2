@@ -11,10 +11,10 @@ module.exports = function (config) {
     reporters: ['spec'],
     port: 9876,
     colors: true,
-    logLevel: config.LOG_INFO,
+    logLevel: config.DEBUG,
     autoWatch: true,
-    browsers: ['PhantomJS'],
+    browsers: ['Chrome'],
     singleRun: false,
     concurrency: Infinity
-  })
-}
+  });
+};

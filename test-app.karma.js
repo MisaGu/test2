@@ -62,8 +62,8 @@ describe('Test trackExchangeRate app', function () {
         expect(trackExchangeRate.getExchangeRate("EUR", "AUD")).toBe(1); // EUR -> USD -> AUD
       });
 
-      it('Should return 0 for getExchangeRate("AUD", "EUR")', function () {
-        expect(trackExchangeRate.getExchangeRate("AUD", "EUR")).toBe(0.8); // EUR -> USD -> AUD
+      it('Should find chain AUD -> USD -> EUR for getExchangeRate("AUD", "EUR")', function () {
+        expect(trackExchangeRate.getExchangeRate("AUD", "EUR")).toBe(1); // EUR -> USD -> AUD
       });
     });
   });
