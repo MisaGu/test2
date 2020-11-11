@@ -68,18 +68,3 @@ describe('Test trackExchangeRate app', function () {
     });
   });
 });
-
-
-
-
-
-// for (let i = 0; i < 100000; i++) {
-//   trackExchangeRate.setExchangeRate("EUR", "USD", 1.25);
-//   trackExchangeRate.setExchangeRate("USD", "AUD", 0.8);
-//   trackExchangeRate.setExchangeRate("AUD", "SEK", 1);
-//   trackExchangeRate.setExchangeRate("AUD", "NZD", 1.5);
-//   trackExchangeRate.setExchangeRate("NZD", "SEK", 1);
-//   trackExchangeRate.setExchangeRate("USD", "SEK", 1);
-// }
-// setExchangeRate("USD", "AUD", 0.9);
-// setExchangeRate("AUD", "SEK", 2.25);
