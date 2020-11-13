@@ -94,24 +94,21 @@ var trackExchangeRate = new (function () {
      * @returns {number)} 0 if exchange chain not exist, else return calculated exchange rate of the shortest exchange chain available
      */
     this.getExchangeRate = function (firstCurrency, secondCurrency) {
-        var f = firstCurrency + secondCurrency;
+        var f = firstCurrency + secondCurrency, cc = currencyExchangeChainsList[secondCurrency];
         var result = 0;
         /** First check if pair can be considered as hash, and return */
         if (currencyHashMap[f])
             result = currencyHashMap[f]._;
-        /** Looking for the exchange chain to meet requirements */ else if (currencyExchangeChainsList[secondCurrency]) {
-            var chain = void 0;
-            for (var k in currencyHashMap) {
-                if (k.indexOf(firstCurrency) == 0) {
-                    for (var r in currencyExchangeChainsList[secondCurrency]) {
-                        if (currencyExchangeChainsList[secondCurrency][r][0] ==
-                            currencyHashMap[k]) {
-                            // Overwrite founded chain if shorter chain found
-                            if (!chain ||
-                                chain.length >
-                                    currencyExchangeChainsList[secondCurrency][r].length) {
-                                chain = currencyExchangeChainsList[secondCurrency][r];
-                            }
+        /** Looking for the exchange chain to meet requirements */ else if (cc) {
+            var chain = null;
+            var keys = Object.keys(currencyHashMap);
+            for (var k = 0; k < keys.length; k++) {
+                if (keys[k].indexOf(firstCurrency) == 0) {
+                    for (var r = 0; r < cc.length; r++) {
+                        // Overwrite founded chain if shorter chain found
+                        if (cc[r][0] == currencyHashMap[k] &&
+                            (!chain || chain.length > cc[r].length)) {
+                            chain = cc[r];
                         }
                     }
                 }

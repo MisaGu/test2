@@ -53,9 +53,7 @@ const trackExchangeRate = new (function () {
       let lastKey = null;
       for (let p = temp.length - 1; p >= 0; p--) {
         reversedTemp.push(
-          currencyHashMap[
-            (temp[+p + 1] || { k: secondCurrency }).k + temp[p].k
-          ]
+          currencyHashMap[(temp[+p + 1] || { k: secondCurrency }).k + temp[p].k]
         );
         lastKey = temp[p].k;
       }
@@ -112,30 +110,24 @@ const trackExchangeRate = new (function () {
     firstCurrency: string,
     secondCurrency: string
   ): number {
-    const f = firstCurrency + secondCurrency;
+    const f = firstCurrency + secondCurrency,
+      cc = currencyExchangeChainsList[secondCurrency];
     let result = 0;
 
     /** First check if pair can be considered as hash, and return */
     if (currencyHashMap[f]) result = currencyHashMap[f]._;
-    /** Looking for the exchange chain to meet requirements */ else if (
-      currencyExchangeChainsList[secondCurrency]
-    ) {
-      let chain;
-      for (let k in currencyHashMap) {
-        if (k.indexOf(firstCurrency) == 0) {
-          for (let r in currencyExchangeChainsList[secondCurrency]) {
+    /** Looking for the exchange chain to meet requirements */ else if (cc) {
+      let chain = null;
+      let keys = Object.keys(currencyHashMap);
+      for (let k = 0; k < keys.length; k++) {
+        if (keys[k].indexOf(firstCurrency) == 0) {
+          for (let r = 0; r < cc.length; r++) {
+            // Overwrite founded chain if shorter chain found
             if (
-              currencyExchangeChainsList[secondCurrency][r][0] ==
-              currencyHashMap[k]
+              cc[r][0] == currencyHashMap[k] &&
+              (!chain || chain.length > cc[r].length)
             ) {
-              // Overwrite founded chain if shorter chain found
-              if (
-                !chain ||
-                chain.length >
-                  currencyExchangeChainsList[secondCurrency][r].length
-              ) {
-                chain = currencyExchangeChainsList[secondCurrency][r];
-              }
+              chain = cc[r];
             }
           }
         }
